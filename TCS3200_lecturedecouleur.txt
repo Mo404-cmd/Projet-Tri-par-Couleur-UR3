@@ -1,33 +1,67 @@
-const int S0 = 8, S1 = 9, S2 = 10, S3 = 11, sensorOut = 12, ledPin = 7;
+# Définition des constantes pour les broches GPIO du capteur et de la LED
+S0 = 8
+S1 = 9
+S2 = 10
+S3 = 11
+sensorOut = 12  # Broche où le capteur envoie le signal
+ledPin = 7      # Broche de la LED indicatrice
 
-void setup() {
-  pinMode(S0, OUTPUT); pinMode(S1, OUTPUT); 
-  pinMode(S2, OUTPUT); pinMode(S3, OUTPUT);
-  pinMode(sensorOut, INPUT); pinMode(ledPin, OUTPUT);
+# Configuration initiale
+# S0 et S1 contrôlent la fréquence de sortie du capteur TCS3200
+# S2 et S3 sélectionnent la couleur à mesurer
+# sensorOut lit le signal du capteur
+# ledPin contrôle une LED pour indiquer l'état
+pinMode(S0, OUTPUT)
+pinMode(S1, OUTPUT)
+pinMode(S2, OUTPUT)
+pinMode(S3, OUTPUT)
+pinMode(sensorOut, INPUT)
+pinMode(ledPin, OUTPUT)
 
-  digitalWrite(ledPin, HIGH);
-  Serial.begin(19200);
-  digitalWrite(S0, HIGH); digitalWrite(S1, LOW);
-}
+# Allume la LED pour signaler que le système est actif
+digitalWrite(ledPin, HIGH)
 
-void loop() {
-  digitalWrite(S2, LOW); digitalWrite(S3, LOW);
-  int rouge = pulseIn(sensorOut, LOW);
-  digitalWrite(S2, HIGH); digitalWrite(S3, HIGH);
-  int vert = pulseIn(sensorOut, LOW);
-  digitalWrite(S2, LOW); digitalWrite(S3, HIGH);
-  int bleu = pulseIn(sensorOut, LOW);
+# Démarre la communication série (pour affichage ou debug)
+Serial.begin(19200)
 
-  float somme = rouge + vert + bleu;
-  float pr = (rouge / somme) * 100;
-  float pv = (vert / somme) * 100;
-  float pb = (bleu / somme) * 100;
+# Configure la fréquence du capteur : S0 HIGH, S1 LOW → 20% de fréquence de sortie
+digitalWrite(S0, HIGH)
+digitalWrite(S1, LOW)
 
-  int codeCouleur = 0;
-  if (pv > 29 && pv < 31) codeCouleur = 2;
-  else if (pr > 11 && pr < 15) codeCouleur = 1;
-  else if (pb > 25) codeCouleur = 3;
+# Boucle principale
+while True:
+    # Mesure de la couleur rouge
+    digitalWrite(S2, LOW)
+    digitalWrite(S3, LOW)
+    rouge = pulseIn(sensorOut, LOW)  # Mesure du temps du signal LOW
 
-  Serial.println(codeCouleur);
-  delay(500);
-}
+    # Mesure de la couleur verte
+    digitalWrite(S2, HIGH)
+    digitalWrite(S3, HIGH)
+    vert = pulseIn(sensorOut, LOW)
+
+    # Mesure de la couleur bleue
+    digitalWrite(S2, LOW)
+    digitalWrite(S3, HIGH)
+    bleu = pulseIn(sensorOut, LOW)
+
+    # Calcul du pourcentage de chaque couleur par rapport à la somme totale
+    somme = rouge + vert + bleu
+    pr = (rouge / somme) * 100  # % de rouge
+    pv = (vert / somme) * 100   # % de vert
+    pb = (bleu / somme) * 100   # % de bleu
+
+    # Détermination d'un code couleur simple selon les pourcentages
+    codeCouleur = 0  # 0 = couleur non reconnue
+    if pv > 29 and pv < 31:
+        codeCouleur = 2  # Vert détecté
+    elif pr > 11 and pr < 15:
+        codeCouleur = 1  # Rouge détecté
+    elif pb > 25:
+        codeCouleur = 3  # Bleu détecté
+
+    # Affichage du code couleur pour debug ou contrôle
+    print(codeCouleur)
+
+    # Pause de 0,5 seconde avant la prochaine mesure
+    delay(500)
