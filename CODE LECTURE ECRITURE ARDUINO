@@ -1,0 +1,61 @@
+using System;
+using System.IO.Ports;
+using System.Net.Sockets;
+
+namespace ModbusColorClient
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string ipUR3 = "192.168.0.10"; // IP du robot UR3 (device IP)
+            int portModbus = 502;           // TCP port utilisé pour Modbus communication
+            string portSerie = "COM3";      // Port série pour l'Arduino (Serial Port)
+            int baudRate = 19200;           // Baud rate pour la communication série
+            byte esclave = 1;               // Modbus slave ID (adresse esclave)
+            short adresseRegistre = 160;    // Adresse du registre Modbus à écrire
+
+            // Création et connexion TCP au device
+            using TcpClient client = new TcpClient();
+            client.Connect(ipUR3, portModbus); // Connect to device
+
+            // Ouverture du port série
+            using SerialPort serial = new SerialPort(portSerie, baudRate);
+            serial.Open(); // Start Serial communication
+
+            while (true)
+            {
+                // Lire une ligne depuis le port série
+                string data = serial.ReadLine().Trim();
+
+                // Convertir la donnée reçue en entier (color code)
+                if (int.TryParse(data, out int colorCode))
+                {
+                    Console.WriteLine($"Code couleur reçu : {colorCode}");
+                    // Écrire la valeur sur le registre Modbus via TCP
+                    WriteModbusWord(client, esclave, adresseRegistre, (short)colorCode);
+                }
+            }
+        }
+
+        // Fonction pour écrire un mot (16-bit) dans un registre Modbus
+        static void WriteModbusWord(TcpClient client, byte esclave, short registre, short valeur)
+        {
+            // Création de la trame Modbus TCP (frame)
+            byte[] trame = new byte[15];
+            trame[0] = trame[1] = trame[2] = trame[3] = 0x00; // Transaction ID + Protocol ID
+            trame[4] = 0x00; trame[5] = 0x09;                // Length
+            trame[6] = esclave;                               // ID esclave (slave ID)
+            trame[7] = 0x10;                                  // Function code: Write Multiple Registers
+            trame[8] = (byte)(registre / 256);               // Adresse registre high byte
+            trame[9] = (byte)(registre % 256);               // Adresse registre low byte
+            trame[10] = 0x00; trame[11] = 0x01;             // Nombre de registres à écrire (1 register)
+            trame[12] = 0x02;                                // Byte count (2 bytes pour 1 registre)
+            trame[13] = (byte)(valeur / 256);               // Valeur high byte
+            trame[14] = (byte)(valeur % 256);               // Valeur low byte
+
+            // Envoi de la trame via TCP
+            client.Client.Send(trame);
+        }
+    }
+}
